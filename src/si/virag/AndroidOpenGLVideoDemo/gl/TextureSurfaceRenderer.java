@@ -1,4 +1,4 @@
-package com.example.PlayerSurfaceTextureTest.gl;
+package si.virag.AndroidOpenGLVideoDemo.gl;
 
 
 import android.graphics.SurfaceTexture;

@@ -1,15 +1,13 @@
-package com.example.PlayerSurfaceTextureTest;
+package si.virag.AndroidOpenGLVideoDemo;
 
 import android.app.Activity;
 import android.content.res.AssetFileDescriptor;
 import android.graphics.SurfaceTexture;
 import android.media.MediaPlayer;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
-import com.example.PlayerSurfaceTextureTest.gl.TextureSurfaceRenderer;
-import com.example.PlayerSurfaceTextureTest.gl.VideoTextureRenderer;
+import si.virag.AndroidOpenGLVideoDemo.gl.VideoTextureRenderer;
 
 import java.io.IOException;
 
