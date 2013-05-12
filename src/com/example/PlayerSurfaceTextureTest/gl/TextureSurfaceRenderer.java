@@ -2,7 +2,6 @@ package com.example.PlayerSurfaceTextureTest.gl;
 
 
 import android.graphics.SurfaceTexture;
-import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.util.Log;
 
@@ -44,9 +43,21 @@ public abstract class TextureSurfaceRenderer implements Runnable
 
         while (running)
         {
+            long loopStart = System.currentTimeMillis();
             pingFps();
             draw();
             egl.eglSwapBuffers(eglDisplay, eglSurface);
+
+            long waitDelta = Math.max(0, 16 - (System.currentTimeMillis() - loopStart));    // Targeting 60 fps, no need for faster
+
+            try
+            {
+                Thread.sleep(waitDelta);
+            }
+            catch (InterruptedException e)
+            {
+                continue;
+            }
         }
 
         deinitGL();
@@ -70,6 +81,11 @@ public abstract class TextureSurfaceRenderer implements Runnable
             lastFpsOutput = System.currentTimeMillis();
             frames = 0;
         }
+    }
+
+    public void onResume()
+    {
+
     }
 
     public void onPause()

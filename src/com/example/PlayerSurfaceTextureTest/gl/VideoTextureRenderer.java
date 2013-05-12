@@ -3,33 +3,36 @@ package com.example.PlayerSurfaceTextureTest.gl;
 
 import android.content.Context;
 import android.graphics.*;
+import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.util.Log;
-import com.example.PlayerSurfaceTextureTest.R;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 
-public class VideoTextureRenderer extends TextureSurfaceRenderer
+public class VideoTextureRenderer extends TextureSurfaceRenderer implements SurfaceTexture.OnFrameAvailableListener
 {
     private static final String vertexShaderCode =
                     "attribute vec4 vPosition;" +
-                    "attribute vec2 vTexCoordinate;" +
+                    "attribute vec4 vTexCoordinate;" +
+                    "uniform mat4 textureTransform;" +
                     "varying vec2 v_TexCoordinate;" +
                     "void main() {" +
-                    "   v_TexCoordinate = vTexCoordinate;" +
+                    "   v_TexCoordinate = (textureTransform * vTexCoordinate).xy;" +
                     "   gl_Position = vPosition;" +
                     "}";
 
     private static final String fragmentShaderCode =
+                    "#extension GL_OES_EGL_image_external : require\n" +
                     "precision mediump float;" +
-                    "uniform sampler2D texture;" +
+                    "uniform samplerExternalOES texture;" +
                     "varying vec2 v_TexCoordinate;" +
                     "void main () {" +
-                    "    gl_FragColor = texture2D(texture, v_TexCoordinate);" +
+                    "    vec4 color = texture2D(texture, v_TexCoordinate);" +
+                    "    gl_FragColor = color;" +
                     "}";
 
 
@@ -45,10 +48,10 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer
 
     // Texture to be shown in backgrund
     private FloatBuffer textureBuffer;
-    private float textureCoords[] = { 0.0f, 0.0f,
-                                      0.0f, 1.0f,
-                                      1.0f, 1.0f,
-                                      1.0f, 0.0f };
+    private float textureCoords[] = { 0.0f, 1.0f, 0.0f, 1.0f,
+                                      0.0f, 0.0f, 0.0f, 1.0f,
+                                      1.0f, 0.0f, 0.0f, 1.0f,
+                                      1.0f, 1.0f, 0.0f, 1.0f };
     private int[] textures = new int[1];
 
     private int vertexShaderHandle;
@@ -57,10 +60,15 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer
     private FloatBuffer vertexBuffer;
     private ShortBuffer drawListBuffer;
 
+    private SurfaceTexture videoTexture;
+    private float[] videoTextureTransform;
+    private boolean frameAvailable = false;
+
     public VideoTextureRenderer(Context context, SurfaceTexture texture, int width, int height)
     {
         super(texture, width, height);
         this.ctx = context;
+        videoTextureTransform = new float[16];
     }
 
     private void loadShaders()
@@ -80,6 +88,14 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer
         GLES20.glAttachShader(shaderProgram, fragmentShaderHandle);
         GLES20.glLinkProgram(shaderProgram);
         checkGlError("Shader program compile");
+
+        int[] status = new int[1];
+        GLES20.glGetProgramiv(shaderProgram, GLES20.GL_LINK_STATUS, status, 0);
+        if (status[0] != GLES20.GL_TRUE) {
+            String error = GLES20.glGetProgramInfoLog(shaderProgram);
+            Log.e("SurfaceTest", "Error while linking program:\n" + error);
+        }
+
     }
 
 
@@ -104,16 +120,6 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer
 
     private void setupTexture(Context context)
     {
-        Bitmap bmp = BitmapFactory.decodeResource(context.getResources(), R.drawable.kitten);
-
-        int target_width = calculateUpperPowerOfTwo(bmp.getWidth());
-        int target_height = calculateUpperPowerOfTwo(bmp.getHeight());
-
-        Log.d("ClipChat.Pixels", "Creating texture size " + target_width + "x" + target_height);
-
-        Bitmap temp = scaleCenterCrop(bmp, height, width);
-        Bitmap textureBitmap = Bitmap.createScaledBitmap(temp, target_width, target_height, true);
-
         ByteBuffer texturebb = ByteBuffer.allocateDirect(textureCoords.length * 4);
         texturebb.order(ByteOrder.nativeOrder());
 
@@ -126,19 +132,26 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer
         GLES20.glGenTextures(1, textures, 0);
         checkGlError("Texture generate");
 
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0]);
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
         checkGlError("Texture bind");
 
-        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, textureBitmap, GLES20.GL_UNSIGNED_BYTE, 0);
-        checkGlError("Texture load");
-        bmp.recycle();
+        videoTexture = new SurfaceTexture(textures[0]);
+        videoTexture.setOnFrameAvailableListener(this);
     }
 
     @Override
     protected void draw()
     {
+        synchronized (this)
+        {
+            if (frameAvailable)
+            {
+                videoTexture.updateTexImage();
+                videoTexture.getTransformMatrix(videoTextureTransform);
+                frameAvailable = false;
+            }
+        }
+
         GLES20.glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
@@ -147,6 +160,7 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer
         int textureParamHandle = GLES20.glGetUniformLocation(shaderProgram, "texture");
         int textureCoordinateHandle = GLES20.glGetAttribLocation(shaderProgram, "vTexCoordinate");
         int positionHandle = GLES20.glGetAttribLocation(shaderProgram, "vPosition");
+        int textureTranformHandle = GLES20.glGetUniformLocation(shaderProgram, "textureTransform");
 
         GLES20.glEnableVertexAttribArray(positionHandle);
         GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 4 * 3, vertexBuffer);
@@ -156,20 +170,13 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer
         GLES20.glUniform1i(textureParamHandle, 0);
 
         GLES20.glEnableVertexAttribArray(textureCoordinateHandle);
-        GLES20.glVertexAttribPointer(textureCoordinateHandle, 2, GLES20.GL_FLOAT, false, 0, textureBuffer);
+        GLES20.glVertexAttribPointer(textureCoordinateHandle, 4, GLES20.GL_FLOAT, false, 0, textureBuffer);
 
+        GLES20.glUniformMatrix4fv(textureTranformHandle, 1, false, videoTextureTransform, 0);
 
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, drawOrder.length, GLES20.GL_UNSIGNED_SHORT, drawListBuffer);
         GLES20.glDisableVertexAttribArray(positionHandle);
         GLES20.glDisableVertexAttribArray(textureCoordinateHandle);
-
-        try
-        {
-            Thread.sleep(5);
-        } catch (InterruptedException e)
-        {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        }
     }
 
     @Override
@@ -188,49 +195,17 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer
         }
     }
 
-    private static int calculateUpperPowerOfTwo(int v)
+    public SurfaceTexture getVideoTexture()
     {
-        v--;
-        v |= v >>> 1;
-        v |= v >>> 2;
-        v |= v >>> 4;
-        v |= v >>> 8;
-        v |= v >>> 16;
-        v++;
-        return v;
-
+        return videoTexture;
     }
 
-    public Bitmap scaleCenterCrop(Bitmap source, int newHeight, int newWidth) {
-        int sourceWidth = source.getWidth();
-        int sourceHeight = source.getHeight();
-
-        // Compute the scaling factors to fit the new height and width, respectively.
-        // To cover the final image, the final scaling will be the bigger
-        // of these two.
-        float xScale = (float) newWidth / sourceWidth;
-        float yScale = (float) newHeight / sourceHeight;
-        float scale = Math.max(xScale, yScale);
-
-        // Now get the size of the source bitmap when scaled
-        float scaledWidth = scale * sourceWidth;
-        float scaledHeight = scale * sourceHeight;
-
-        // Let's find out the upper left coordinates if the scaled bitmap
-        // should be centered in the new size give by the parameters
-        float left = (newWidth - scaledWidth) / 2;
-        float top = (newHeight - scaledHeight) / 2;
-
-        // The target rectangle for the new, scaled version of the source bitmap will now
-        // be
-        RectF targetRect = new RectF(left, top, left + scaledWidth, top + scaledHeight);
-
-        // Finally, we create a new bitmap of the specified size and draw our new,
-        // scaled bitmap onto it.
-        Bitmap dest = Bitmap.createBitmap(newWidth, newHeight, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(dest);
-        canvas.drawBitmap(source, null, targetRect, new Paint(Paint.FILTER_BITMAP_FLAG));
-
-        return dest;
+    @Override
+    public void onFrameAvailable(SurfaceTexture surfaceTexture)
+    {
+        synchronized (this)
+        {
+            frameAvailable = true;
+        }
     }
 }
