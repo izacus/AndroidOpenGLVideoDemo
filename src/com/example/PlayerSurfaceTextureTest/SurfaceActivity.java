@@ -56,6 +56,7 @@ public class SurfaceActivity extends Activity implements TextureView.SurfaceText
     {
         renderer = new VideoTextureRenderer(this, surface.getSurfaceTexture(), surfaceWidth, surfaceHeight);
         player = new MediaPlayer();
+
         try
         {
             AssetFileDescriptor afd = getAssets().openFd("big_buck_bunny.mp4");
@@ -63,6 +64,7 @@ public class SurfaceActivity extends Activity implements TextureView.SurfaceText
             player.setSurface(new Surface(renderer.getVideoTexture()));
             player.setLooping(true);
             player.prepare();
+            renderer.setVideoSize(player.getVideoWidth(), player.getVideoHeight());
             player.start();
 
         }

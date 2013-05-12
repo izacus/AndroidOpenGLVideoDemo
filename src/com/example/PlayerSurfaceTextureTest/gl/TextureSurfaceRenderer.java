@@ -7,7 +7,11 @@ import android.util.Log;
 
 import javax.microedition.khronos.egl.*;
 
-
+/**
+ * Renderer which initializes OpenGL 2.0 context on a passed surface and starts a rendering thread
+ *
+ * This class has to be subclassed to be used properly
+ */
 public abstract class TextureSurfaceRenderer implements Runnable
 {
     private static final int EGL_OPENGL_ES2_BIT = 4;
@@ -24,6 +28,11 @@ public abstract class TextureSurfaceRenderer implements Runnable
     protected int height;
     private boolean running;
 
+    /**
+     * @param texture Surface texture on which to render. This has to be called AFTER the texture became available
+     * @param width Width of the passed surface
+     * @param height Height of the passed surface
+     */
     public TextureSurfaceRenderer(SurfaceTexture texture, int width, int height)
     {
         this.texture = texture;
@@ -63,7 +72,16 @@ public abstract class TextureSurfaceRenderer implements Runnable
         deinitGL();
     }
 
+    /**
+     * Main draw function, subclass this and add custom drawing code here. The rendering thread will attempt to limit
+     * FPS to 60 to keep CPU usage low.
+     */
     protected abstract void draw();
+
+    /**
+     * OpenGL component initialization funcion. This is called after OpenGL context has been initialized on the rendering thread.
+     * Subclass this and initialize shaders / textures / other GL related components here.
+     */
     protected abstract void initGLComponents();
 
     private long lastFpsOutput = 0;
@@ -83,15 +101,15 @@ public abstract class TextureSurfaceRenderer implements Runnable
         }
     }
 
-    public void onResume()
-    {
 
-    }
-
+    /**
+     * Call when activity pauses. This stops the rendering thread and deinitializes OpenGL.
+     */
     public void onPause()
     {
         running = false;
     }
+
 
     private void initGL()
     {
@@ -156,7 +174,7 @@ public abstract class TextureSurfaceRenderer implements Runnable
                 EGL10.EGL_GREEN_SIZE, 8,
                 EGL10.EGL_BLUE_SIZE, 8,
                 EGL10.EGL_ALPHA_SIZE, 8,
-                EGL10.EGL_DEPTH_SIZE, 16,
+                EGL10.EGL_DEPTH_SIZE, 0,
                 EGL10.EGL_STENCIL_SIZE, 0,
                 EGL10.EGL_NONE
         };

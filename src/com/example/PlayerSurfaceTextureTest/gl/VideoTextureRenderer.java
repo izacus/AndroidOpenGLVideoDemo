@@ -64,6 +64,10 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
     private float[] videoTextureTransform;
     private boolean frameAvailable = false;
 
+    private int videoWidth;
+    private int videoHeight;
+    private boolean adjustViewport = false;
+
     public VideoTextureRenderer(Context context, SurfaceTexture texture, int width, int height)
     {
         super(texture, width, height);
@@ -152,6 +156,9 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
             }
         }
 
+        if (adjustViewport)
+            adjustViewport();
+
         GLES20.glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
@@ -179,12 +186,42 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
         GLES20.glDisableVertexAttribArray(textureCoordinateHandle);
     }
 
+    private void adjustViewport()
+    {
+        float surfaceAspect = height / (float)width;
+        float videoAspect = videoHeight / (float)videoWidth;
+
+        if (surfaceAspect > videoAspect)
+        {
+            float heightRatio = height / (float)videoHeight;
+            int newWidth = (int)(width * heightRatio);
+            int xOffset = (newWidth - width) / 2;
+            GLES20.glViewport(-xOffset, 0, newWidth, height);
+        }
+        else
+        {
+            float widthRatio = width / (float)videoWidth;
+            int newHeight = (int)(height * widthRatio);
+            int yOffset = (newHeight - height) / 2;
+            GLES20.glViewport(0, -yOffset, width, newHeight);
+        }
+
+        adjustViewport = false;
+    }
+
     @Override
     protected void initGLComponents()
     {
         setupVertexBuffer();
         setupTexture(ctx);
         loadShaders();
+    }
+
+    public void setVideoSize(int width, int height)
+    {
+        this.videoWidth = width;
+        this.videoHeight = height;
+        adjustViewport = true;
     }
 
     public void checkGlError(String op)
