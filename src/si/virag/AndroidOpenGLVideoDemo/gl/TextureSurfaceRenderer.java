@@ -1,6 +1,5 @@
 package si.virag.AndroidOpenGLVideoDemo.gl;
 
-
 import android.graphics.SurfaceTexture;
 import android.opengl.GLUtils;
 import android.util.Log;
@@ -17,10 +16,9 @@ public abstract class TextureSurfaceRenderer implements Runnable
     private static final int EGL_OPENGL_ES2_BIT = 4;
     private static final int EGL_CONTEXT_CLIENT_VERSION = 0x3098;
     private static final String LOG_TAG = "SurfaceTest.GL";
-    protected SurfaceTexture texture;
+    protected final SurfaceTexture texture;
     private EGL10 egl;
     private EGLDisplay eglDisplay;
-    private EGLConfig eglConfig;
     private EGLContext eglContext;
     private EGLSurface eglSurface;
 
@@ -54,21 +52,27 @@ public abstract class TextureSurfaceRenderer implements Runnable
         {
             long loopStart = System.currentTimeMillis();
             pingFps();
-            draw();
-            egl.eglSwapBuffers(eglDisplay, eglSurface);
 
-            long waitDelta = Math.max(0, 16 - (System.currentTimeMillis() - loopStart));    // Targeting 60 fps, no need for faster
-
-            try
+            if (draw())
             {
-                Thread.sleep(waitDelta);
+                egl.eglSwapBuffers(eglDisplay, eglSurface);
             }
-            catch (InterruptedException e)
+
+            long waitDelta = 16 - (System.currentTimeMillis() - loopStart);    // Targeting 60 fps, no need for faster
+            if (waitDelta > 0)
             {
-                continue;
+                try
+                {
+                    Thread.sleep(waitDelta);
+                }
+                catch (InterruptedException e)
+                {
+                    continue;
+                }
             }
         }
 
+        deinitGLComponents();
         deinitGL();
     }
 
@@ -76,13 +80,14 @@ public abstract class TextureSurfaceRenderer implements Runnable
      * Main draw function, subclass this and add custom drawing code here. The rendering thread will attempt to limit
      * FPS to 60 to keep CPU usage low.
      */
-    protected abstract void draw();
+    protected abstract boolean draw();
 
     /**
      * OpenGL component initialization funcion. This is called after OpenGL context has been initialized on the rendering thread.
      * Subclass this and initialize shaders / textures / other GL related components here.
      */
     protected abstract void initGLComponents();
+    protected abstract void deinitGLComponents();
 
     private long lastFpsOutput = 0;
     private int frames;
@@ -115,11 +120,11 @@ public abstract class TextureSurfaceRenderer implements Runnable
     {
         egl = (EGL10) EGLContext.getEGL();
         eglDisplay = egl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
-        
+
         int[] version = new int[2];
         egl.eglInitialize(eglDisplay, version);
-        
-        eglConfig = chooseEglConfig();
+
+        EGLConfig eglConfig = chooseEglConfig();
         eglContext = createContext(egl, eglDisplay, eglConfig);
 
         eglSurface = egl.eglCreateWindowSurface(eglDisplay, eglConfig, texture, null);
@@ -137,8 +142,10 @@ public abstract class TextureSurfaceRenderer implements Runnable
 
     private void deinitGL()
     {
-        egl.eglDestroyContext(eglDisplay, eglContext);
+        egl.eglMakeCurrent(eglDisplay, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT);
         egl.eglDestroySurface(eglDisplay, eglSurface);
+        egl.eglDestroyContext(eglDisplay, eglContext);
+        egl.eglTerminate(eglDisplay);
         Log.d(LOG_TAG, "OpenGL deinit OK.");
     }
 
