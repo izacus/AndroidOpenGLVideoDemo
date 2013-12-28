@@ -1,6 +1,13 @@
-AndroidOpenGLVideoDemo
-======================
+TextureView Video playback demo
+================================
 
-Demo of using TextureView and OpenGL on it to render video
+This is a demo for using OpenGL to render video to a TextureView.
 
-Also shows how to initialize OpenGL context with TextureView target.
+With this you can use OpenGL shaders for video effects during playback.
+
+Important files:
+
+`TextureSurfaceRenderer.java` - Similar to GLSurfaceView, it initialiazes OpenGL context on a TextureView surface and has an abstract `draw()` function where OpenGL drawing should be done.
+
+`VideoTextureRendrer.java` - Extension of TextureSurfaceRendrer that uses OpenGL shaders to render video with OpenGL.
+
