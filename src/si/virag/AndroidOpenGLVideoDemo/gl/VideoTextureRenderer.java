@@ -144,7 +144,7 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
     }
 
     @Override
-    protected void draw()
+    protected boolean draw()
     {
         synchronized (this)
         {
@@ -154,6 +154,11 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
                 videoTexture.getTransformMatrix(videoTextureTransform);
                 frameAvailable = false;
             }
+            else
+            {
+                return false;
+            }
+
         }
 
         if (adjustViewport)
@@ -184,6 +189,8 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, drawOrder.length, GLES20.GL_UNSIGNED_SHORT, drawListBuffer);
         GLES20.glDisableVertexAttribArray(positionHandle);
         GLES20.glDisableVertexAttribArray(textureCoordinateHandle);
+
+        return true;
     }
 
     private void adjustViewport()
@@ -215,6 +222,15 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
         setupVertexBuffer();
         setupTexture(ctx);
         loadShaders();
+    }
+
+    @Override
+    protected void deinitGLComponents()
+    {
+        GLES20.glDeleteTextures(1, textures, 0);
+        GLES20.glDeleteProgram(shaderProgram);
+        videoTexture.release();
+        videoTexture.setOnFrameAvailableListener(null);
     }
 
     public void setVideoSize(int width, int height)
