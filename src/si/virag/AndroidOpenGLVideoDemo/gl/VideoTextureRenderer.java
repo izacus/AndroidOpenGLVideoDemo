@@ -177,7 +177,7 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
         GLES20.glEnableVertexAttribArray(positionHandle);
         GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 4 * 3, vertexBuffer);
 
-        GLES20.glBindTexture(GLES20.GL_TEXTURE0, textures[0]);
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glUniform1i(textureParamHandle, 0);
 
