@@ -55,6 +55,9 @@ public class SurfaceActivity extends Activity implements TextureView.SurfaceText
         renderer = new VideoTextureRenderer(this, surface.getSurfaceTexture(), surfaceWidth, surfaceHeight);
         player = new MediaPlayer();
 
+		// wait for OpenGL to finish initializing
+		while (renderer.getVideoTexture() == null);
+
         try
         {
             AssetFileDescriptor afd = getAssets().openFd("big_buck_bunny.mp4");
