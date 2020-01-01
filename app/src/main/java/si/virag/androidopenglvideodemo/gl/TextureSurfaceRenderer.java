@@ -1,4 +1,4 @@
-package si.virag.AndroidOpenGLVideoDemo.gl;
+package si.virag.androidopenglvideodemo.gl;
 
 import android.graphics.SurfaceTexture;
 import android.opengl.GLUtils;
@@ -16,14 +16,16 @@ public abstract class TextureSurfaceRenderer implements Runnable
     private static final int EGL_OPENGL_ES2_BIT = 4;
     private static final int EGL_CONTEXT_CLIENT_VERSION = 0x3098;
     private static final String LOG_TAG = "SurfaceTest.GL";
-    protected final SurfaceTexture texture;
+
+    int width;
+    int height;
+
+    private final SurfaceTexture texture;
     private EGL10 egl;
     private EGLDisplay eglDisplay;
     private EGLContext eglContext;
     private EGLSurface eglSurface;
 
-    protected int width;
-    protected int height;
     private boolean running;
 
     /**
@@ -31,7 +33,7 @@ public abstract class TextureSurfaceRenderer implements Runnable
      * @param width Width of the passed surface
      * @param height Height of the passed surface
      */
-    public TextureSurfaceRenderer(SurfaceTexture texture, int width, int height)
+    TextureSurfaceRenderer(SurfaceTexture texture, int width, int height)
     {
         this.texture = texture;
         this.width = width;

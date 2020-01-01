@@ -1,4 +1,4 @@
-package si.virag.AndroidOpenGLVideoDemo;
+package si.virag.androidopenglvideodemo;
 
 import android.app.Activity;
 import android.content.res.AssetFileDescriptor;
@@ -7,14 +7,12 @@ import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.view.Surface;
 import android.view.TextureView;
-import si.virag.AndroidOpenGLVideoDemo.gl.VideoTextureRenderer;
+import si.virag.androidopenglvideodemo.gl.VideoTextureRenderer;
 
 import java.io.IOException;
 
 public class SurfaceActivity extends Activity implements TextureView.SurfaceTextureListener
 {
-    private static final String LOG_TAG = "SurfaceTest";
-
     private TextureView surface;
     private MediaPlayer player;
     private VideoTextureRenderer renderer;
@@ -28,7 +26,7 @@ public class SurfaceActivity extends Activity implements TextureView.SurfaceText
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
-        surface = (TextureView) findViewById(R.id.surface);
+        surface = findViewById(R.id.surface);
         surface.setSurfaceTextureListener(this);
     }
 
@@ -36,8 +34,9 @@ public class SurfaceActivity extends Activity implements TextureView.SurfaceText
     protected void onResume()
     {
         super.onResume();
-        if (surface.isAvailable())
-            startPlaying();
+        if (surface.isAvailable()) {
+            startPlaying(surface.getSurfaceTexture());
+        }
     }
 
     @Override
@@ -50,9 +49,9 @@ public class SurfaceActivity extends Activity implements TextureView.SurfaceText
             renderer.onPause();
     }
 
-    private void startPlaying()
+    private void startPlaying(SurfaceTexture surfaceTexture)
     {
-        renderer = new VideoTextureRenderer(this, surface.getSurfaceTexture(), surfaceWidth, surfaceHeight);
+        renderer = new VideoTextureRenderer(surfaceTexture, surfaceWidth, surfaceHeight);
         player = new MediaPlayer();
 
         try
@@ -77,24 +76,20 @@ public class SurfaceActivity extends Activity implements TextureView.SurfaceText
     {
         surfaceWidth = width;
         surfaceHeight = height;
-        startPlaying();
+        startPlaying(surface);
     }
 
     @Override
     public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height)
-    {
-        //To change body of implemented methods use File | Settings | File Templates.
-    }
+    {}
 
     @Override
     public boolean onSurfaceTextureDestroyed(SurfaceTexture surface)
     {
-        return false;  //To change body of implemented methods use File | Settings | File Templates.
+        return false;
     }
 
     @Override
     public void onSurfaceTextureUpdated(SurfaceTexture surface)
-    {
-        //To change body of implemented methods use File | Settings | File Templates.
-    }
+    { }
 }

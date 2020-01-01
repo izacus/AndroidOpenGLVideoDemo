@@ -1,8 +1,7 @@
-package si.virag.AndroidOpenGLVideoDemo.gl;
+package si.virag.androidopenglvideodemo.gl;
 
 
-import android.content.Context;
-import android.graphics.*;
+import android.graphics.SurfaceTexture;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
@@ -15,7 +14,7 @@ import java.nio.ShortBuffer;
 
 public class VideoTextureRenderer extends TextureSurfaceRenderer implements SurfaceTexture.OnFrameAvailableListener
 {
-    private static final String vertexShaderCode =
+    private static final String VERTEX_SHADER_CODE =
                     "attribute vec4 vPosition;" +
                     "attribute vec4 vTexCoordinate;" +
                     "uniform mat4 textureTransform;" +
@@ -25,7 +24,7 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
                     "   gl_Position = vPosition;" +
                     "}";
 
-    private static final String fragmentShaderCode =
+    private static final String FRAGMENT_SHADER_CODE =
                     "#extension GL_OES_EGL_image_external : require\n" +
                     "precision mediump float;" +
                     "uniform samplerExternalOES texture;" +
@@ -36,26 +35,24 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
                     "}";
 
 
-    private static float squareSize = 1.0f;
-    private static float squareCoords[] = { -squareSize,  squareSize, 0.0f,   // top left
-                                            -squareSize, -squareSize, 0.0f,   // bottom left
-                                             squareSize, -squareSize, 0.0f,   // bottom right
-                                             squareSize,  squareSize, 0.0f }; // top right
+    private static final float SQUARE_SIZE = 1.0f;
+    private static final float[] SQUARE_COORDINATES = {-SQUARE_SIZE, SQUARE_SIZE, 0.0f,   // top left
+                                                       -SQUARE_SIZE, -SQUARE_SIZE, 0.0f,   // bottom left
+                                                        SQUARE_SIZE, -SQUARE_SIZE, 0.0f,   // bottom right
+                                                        SQUARE_SIZE, SQUARE_SIZE, 0.0f}; // top right
 
-    private static short drawOrder[] = { 0, 1, 2, 0, 2, 3};
+    private static final short[] DRAW_ORDER = {0, 1, 2, 0, 2, 3};
 
-    private Context ctx;
+    private static final float[] TEXTURE_COORDINATES = {0.0f, 1.0f, 0.0f, 1.0f,
+            0.0f, 0.0f, 0.0f, 1.0f,
+            1.0f, 0.0f, 0.0f, 1.0f,
+            1.0f, 1.0f, 0.0f, 1.0f};
 
     // Texture to be shown in backgrund
     private FloatBuffer textureBuffer;
-    private float textureCoords[] = { 0.0f, 1.0f, 0.0f, 1.0f,
-                                      0.0f, 0.0f, 0.0f, 1.0f,
-                                      1.0f, 0.0f, 0.0f, 1.0f,
-                                      1.0f, 1.0f, 0.0f, 1.0f };
+
     private int[] textures = new int[1];
 
-    private int vertexShaderHandle;
-    private int fragmentShaderHandle;
     private int shaderProgram;
     private FloatBuffer vertexBuffer;
     private ShortBuffer drawListBuffer;
@@ -68,22 +65,21 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
     private int videoHeight;
     private boolean adjustViewport = false;
 
-    public VideoTextureRenderer(Context context, SurfaceTexture texture, int width, int height)
+    public VideoTextureRenderer(SurfaceTexture texture, int width, int height)
     {
         super(texture, width, height);
-        this.ctx = context;
         videoTextureTransform = new float[16];
     }
 
     private void loadShaders()
     {
-        vertexShaderHandle = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
-        GLES20.glShaderSource(vertexShaderHandle, vertexShaderCode);
+        int vertexShaderHandle = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
+        GLES20.glShaderSource(vertexShaderHandle, VERTEX_SHADER_CODE);
         GLES20.glCompileShader(vertexShaderHandle);
         checkGlError("Vertex shader compile");
 
-        fragmentShaderHandle = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER);
-        GLES20.glShaderSource(fragmentShaderHandle, fragmentShaderCode);
+        int fragmentShaderHandle = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER);
+        GLES20.glShaderSource(fragmentShaderHandle, FRAGMENT_SHADER_CODE);
         GLES20.glCompileShader(fragmentShaderHandle);
         checkGlError("Pixel shader compile");
 
@@ -106,29 +102,29 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
     private void setupVertexBuffer()
     {
         // Draw list buffer
-        ByteBuffer dlb = ByteBuffer.allocateDirect(drawOrder. length * 2);
+        ByteBuffer dlb = ByteBuffer.allocateDirect(DRAW_ORDER. length * 2);
         dlb.order(ByteOrder.nativeOrder());
         drawListBuffer = dlb.asShortBuffer();
-        drawListBuffer.put(drawOrder);
+        drawListBuffer.put(DRAW_ORDER);
         drawListBuffer.position(0);
 
         // Initialize the texture holder
-        ByteBuffer bb = ByteBuffer.allocateDirect(squareCoords.length * 4);
+        ByteBuffer bb = ByteBuffer.allocateDirect(SQUARE_COORDINATES.length * 4);
         bb.order(ByteOrder.nativeOrder());
 
         vertexBuffer = bb.asFloatBuffer();
-        vertexBuffer.put(squareCoords);
+        vertexBuffer.put(SQUARE_COORDINATES);
         vertexBuffer.position(0);
     }
 
 
-    private void setupTexture(Context context)
+    private void setupTexture()
     {
-        ByteBuffer texturebb = ByteBuffer.allocateDirect(textureCoords.length * 4);
+        ByteBuffer texturebb = ByteBuffer.allocateDirect(TEXTURE_COORDINATES.length * 4);
         texturebb.order(ByteOrder.nativeOrder());
 
         textureBuffer = texturebb.asFloatBuffer();
-        textureBuffer.put(textureCoords);
+        textureBuffer.put(TEXTURE_COORDINATES);
         textureBuffer.position(0);
 
         // Generate the actual texture
@@ -186,7 +182,7 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
 
         GLES20.glUniformMatrix4fv(textureTranformHandle, 1, false, videoTextureTransform, 0);
 
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, drawOrder.length, GLES20.GL_UNSIGNED_SHORT, drawListBuffer);
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, DRAW_ORDER.length, GLES20.GL_UNSIGNED_SHORT, drawListBuffer);
         GLES20.glDisableVertexAttribArray(positionHandle);
         GLES20.glDisableVertexAttribArray(textureCoordinateHandle);
 
@@ -220,7 +216,7 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
     protected void initGLComponents()
     {
         setupVertexBuffer();
-        setupTexture(ctx);
+        setupTexture();
         loadShaders();
     }
 
@@ -240,14 +236,6 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
         adjustViewport = true;
     }
 
-    public void checkGlError(String op)
-    {
-        int error;
-        while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR) {
-            Log.e("SurfaceTest", op + ": glError " + GLUtils.getEGLErrorString(error));
-        }
-    }
-
     public SurfaceTexture getVideoTexture()
     {
         return videoTexture;
@@ -259,6 +247,14 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
         synchronized (this)
         {
             frameAvailable = true;
+        }
+    }
+
+    private void checkGlError(String op)
+    {
+        int error;
+        while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR) {
+            Log.e("SurfaceTest", op + ": glError " + GLUtils.getEGLErrorString(error));
         }
     }
 }
