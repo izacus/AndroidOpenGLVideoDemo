@@ -51,24 +51,25 @@ public class SurfaceActivity extends Activity implements TextureView.SurfaceText
 
     private void startPlaying(SurfaceTexture surfaceTexture)
     {
-        renderer = new VideoTextureRenderer(surfaceTexture, surfaceWidth, surfaceHeight);
-        player = new MediaPlayer();
+        renderer = new VideoTextureRenderer(surfaceTexture, surfaceWidth, surfaceHeight, videoTexture -> {
+            // This runs on background thread as well.
+            player = new MediaPlayer();
+            try
+            {
+                AssetFileDescriptor afd = getAssets().openFd("big_buck_bunny.mp4");
+                player.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+                player.setSurface(new Surface(videoTexture));
+                player.setLooping(true);
+                player.prepare();
+                renderer.setVideoSize(player.getVideoWidth(), player.getVideoHeight());
+                player.start();
 
-        try
-        {
-            AssetFileDescriptor afd = getAssets().openFd("big_buck_bunny.mp4");
-            player.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
-            player.setSurface(new Surface(renderer.getVideoTexture()));
-            player.setLooping(true);
-            player.prepare();
-            renderer.setVideoSize(player.getVideoWidth(), player.getVideoHeight());
-            player.start();
-
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException("Could not open input video!");
-        }
+            }
+            catch (IOException e)
+            {
+                throw new RuntimeException("Could not open input video!");
+            }
+        });
     }
 
     @Override

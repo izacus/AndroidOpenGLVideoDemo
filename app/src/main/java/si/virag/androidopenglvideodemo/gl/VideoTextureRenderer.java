@@ -11,6 +11,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
+import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
 
 public class VideoTextureRenderer extends TextureSurfaceRenderer implements SurfaceTexture.OnFrameAvailableListener
 {
@@ -48,6 +50,8 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
             1.0f, 0.0f, 0.0f, 1.0f,
             1.0f, 1.0f, 0.0f, 1.0f};
 
+    private final Consumer<SurfaceTexture> initCompleteRunnable;
+
     // Texture to be shown in backgrund
     private FloatBuffer textureBuffer;
 
@@ -65,10 +69,11 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
     private int videoHeight;
     private boolean adjustViewport = false;
 
-    public VideoTextureRenderer(SurfaceTexture texture, int width, int height)
+    public VideoTextureRenderer(SurfaceTexture texture, int width, int height, Consumer<SurfaceTexture> initComplete)
     {
         super(texture, width, height);
         videoTextureTransform = new float[16];
+        initCompleteRunnable = initComplete;
     }
 
     private void loadShaders()
@@ -215,9 +220,13 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
     @Override
     protected void initGLComponents()
     {
-        setupVertexBuffer();
-        setupTexture();
-        loadShaders();
+        synchronized (this) {
+            setupVertexBuffer();
+            setupTexture();
+            loadShaders();
+        }
+
+        initCompleteRunnable.accept(videoTexture);
     }
 
     @Override
@@ -234,11 +243,6 @@ public class VideoTextureRenderer extends TextureSurfaceRenderer implements Surf
         this.videoWidth = width;
         this.videoHeight = height;
         adjustViewport = true;
-    }
-
-    public SurfaceTexture getVideoTexture()
-    {
-        return videoTexture;
     }
 
     @Override
